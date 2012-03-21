@@ -92,20 +92,24 @@ begin
     inc(i);
   end;
 
-  Range := TemplateSheet.Rows[IntToStr(FirstBandLine) + ':' + IntToStr(LastBandLine)];
-  Range.Copy;
-  Range := TemplateSheet.Rows[IntToStr(CurrentLine) + ':' + IntToStr(CurrentLine)];
-  Range.Insert;
+  if LastBandLine>0 then begin // if BandName found
 
-  // delete band name from result lines 
-  for i := CurrentLine to CurrentLine + (LastBandLine - FirstBandLine) do begin
-    TemplateSheet.Cells[i, 1].Value := '';
+    Range := TemplateSheet.Rows[IntToStr(FirstBandLine) + ':' + IntToStr(LastBandLine)];
+    Range.Copy;
+    Range := TemplateSheet.Rows[IntToStr(CurrentLine) + ':' + IntToStr(CurrentLine)];
+    Range.Insert;
+
+    // delete band name from result lines
+    for i := CurrentLine to CurrentLine + (LastBandLine - FirstBandLine) do begin
+      TemplateSheet.Cells[i, 1].Value := '';
+    end;
+    CurrentLine := CurrentLine + (LastBandLine - FirstBandLine) + 1;
+    // new band position in report
+    FirstBandLine := CurrentLine - (LastBandLine - FirstBandLine) - 1;
+    LastBandLine := CurrentLine - 1;
+    Progress.Line(CurrentLine);
+
   end;
-  CurrentLine := CurrentLine + (LastBandLine - FirstBandLine) + 1;
-  // new band position in report
-  FirstBandLine := CurrentLine - (LastBandLine - FirstBandLine) - 1;
-  LastBandLine := CurrentLine - 1;
-  Progress.Line(CurrentLine);
 end;
 
 procedure TA7Rep.SetValue(VarName: string; Value: Variant);
