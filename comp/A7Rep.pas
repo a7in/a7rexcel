@@ -28,9 +28,16 @@ type
     FirstBandLine, LastBandLine: integer; // last paste band position
   protected
   public
-    procedure OpenTemplate(FileName: string);
+    MaxBandColumns : integer ; // максимальная ширина шаблона в столбцах
+    isVisible : boolean;
+    procedure OpenTemplate(FileName: string); overload;
+    procedure OpenTemplate(FileName: string; Visible : boolean); overload;
     procedure PasteBand(BandName: string);
     procedure SetValue(VarName: string; Value: Variant);
+    procedure SetComment(VarName: string; Value: Variant);
+    function GetComment(VarName: string): string;
+    function GetAndClearComment(VarName: string): string;
+    procedure ExcelFind(const Value: string; var aCol, aRow : Integer; Where:Integer);
     procedure Show;
     destructor Destroy; override;
   published
@@ -42,7 +49,11 @@ implementation
 
 const
   MaxBandLines = 300; // max template lines count
-  MaxBandColumns = 15; // max template column count
+
+  // --------------- Константы Excel ----------------------------
+  xlFormulas = $FFFFEFE5;
+  xlComments = $FFFFEFD0;
+  xlValues = $FFFFEFBD;
 
 procedure Register;
 begin
@@ -57,7 +68,59 @@ begin
   inherited;
 end;
 
+procedure TA7Rep.ExcelFind(const Value: string; var aCol, aRow: Integer; Where:Integer);
+// Where: определяет где искать (xlFormulas, xlComments, xlValues)
+var
+  R: OleVariant;
+begin
+   R := TemplateSheet.Rows[IntToStr(FirstBandLine) + ':' + IntToStr(LastBandLine)];
+   try
+     R:=R.Find(What:=Value,LookIn:=Where);
+     aCol:=R.Column;
+     aRow:=R.Row;
+   Except
+     aCol := -1;
+     aRow := -1;
+   End;
+end;
+
+function TA7Rep.GetAndClearComment(VarName: string): string;
+var
+  v : Variant;
+  x , y : Integer;
+begin
+  Result := '';
+  ExcelFind(VarName, x, y, xlValues);
+  if x<0 then Exit;
+  v := Variant(TemplateSheet.Cells[y, x].Value);
+  if ((varType(v) = varOleStr)) then
+     if Pos(VarName,v)>0 then begin
+        Result := TemplateSheet.Cells[y, x].Comment.Text;
+        TemplateSheet.Cells[y, x].ClearComments;
+     end;
+end;
+
+function TA7Rep.GetComment(VarName: string): string;
+var
+  v : Variant;
+  x , y : Integer;
+begin
+  Result := '';
+  ExcelFind(VarName, x, y, xlValues);
+  if x<0 then Exit;
+  v := Variant(TemplateSheet.Cells[y, x].Value);
+  if ((varType(v) = varOleStr)) then
+     if Pos(VarName,v)>0 then begin
+        Result := TemplateSheet.Cells[y, x].Comment.Text;
+     end;
+end;
+
 procedure TA7Rep.OpenTemplate(FileName: string);
+begin // По умолчанию не показываем Excel
+  OpenTemplate(FileName, false);
+end;
+
+procedure TA7Rep.OpenTemplate(FileName: string; Visible: boolean);
 begin
   Excel := CreateOleObject('Excel.Application');
   Excel.Workbooks.Open(FileName, True, True);
@@ -65,9 +128,12 @@ begin
   Excel.DisplayAlerts := False; // for prevent error in SetValue procedure, where VarName not fount for replace
   CurrentLine := 1;
 
-  Progress := TA7Progress.Create(Self);
+  Excel.Visible := Visible;
+  isVisible := Visible;
+  if isVisible=False then // Если Excel виден то не будем показывать окошко с прогрессом
+    Progress := TA7Progress.Create(Self);
   Application.ProcessMessages;
-
+  MaxBandColumns := TemplateSheet.UsedRange.Columns.Count;
 end;
 
 procedure TA7Rep.PasteBand(BandName: string);
@@ -107,8 +173,20 @@ begin
     // new band position in report
     FirstBandLine := CurrentLine - (LastBandLine - FirstBandLine) - 1;
     LastBandLine := CurrentLine - 1;
-    Progress.Line(CurrentLine);
+    if isVisible=false then
+      Progress.Line(CurrentLine);
 
+  end;
+end;
+
+procedure TA7Rep.SetComment(VarName: string; Value: Variant);
+// VarName - метка в ячейке, в которую нужно добавить комментарий
+var
+  x, y : Integer;
+begin
+  ExcelFind(VarName, x, y, xlValues);
+  if x>0 then begin
+    TemplateSheet.Cells[y, x].AddComment(Value);
   end;
 end;
 
@@ -130,7 +208,12 @@ begin
   Range.Delete;
 
   Excel.Visible := true;
-  Progress.Free;
+  if isVisible=false then
+    Progress.Free;
+
+  Range := Unassigned;
+  TemplateSheet := Unassigned;
+  Excel := Unassigned;
 end;
 
 { TA7ProgressForm }
