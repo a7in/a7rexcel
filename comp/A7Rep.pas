@@ -5,6 +5,13 @@ interface
 uses
   SysUtils, Classes, Variants, ComObj, StdCtrls, Forms;
 
+const
+  // --------------- Константы Excel ----------------------------
+  xlFormulas = $FFFFEFE5;
+  xlComments = $FFFFEFD0;
+  xlValues = $FFFFEFBD;
+  
+
 type
   TA7Progress = class
   private
@@ -20,23 +27,26 @@ type
 
   TA7Rep = class(TComponent)
   private
-    Excel, TemplateSheet: Variant;
-
     Progress: TA7Progress;
 
     CurrentLine: integer;
-    FirstBandLine, LastBandLine: integer; // last paste band position
   protected
   public
+    Excel, TemplateSheet: Variant;
+    FirstBandLine, LastBandLine: integer; // last paste band position
     MaxBandColumns : integer ; // максимальная ширина шаблона в столбцах
     isVisible : boolean;
     procedure OpenTemplate(FileName: string); overload;
     procedure OpenTemplate(FileName: string; Visible : boolean); overload;
     procedure PasteBand(BandName: string);
-    procedure SetValue(VarName: string; Value: Variant);
+    procedure SetValue(VarName: string; Value: Variant); overload;
+    procedure SetValue(X,Y: Integer; Value: Variant); overload;
+    procedure SetValueAsText(varName: string; Value: string); overload;
+    procedure SetValueAsText(X,Y: Integer; Value: string); overload;    
     procedure SetComment(VarName: string; Value: Variant);
     function GetComment(VarName: string): string;
-    function GetAndClearComment(VarName: string): string;
+    function GetAndClearComment(VarName: string): string; overload;
+    function GetAndClearComment(X,Y: Integer): string; overload;
     procedure ExcelFind(const Value: string; var aCol, aRow : Integer; Where:Integer);
     procedure Show;
     destructor Destroy; override;
@@ -50,10 +60,6 @@ implementation
 const
   MaxBandLines = 300; // max template lines count
 
-  // --------------- Константы Excel ----------------------------
-  xlFormulas = $FFFFEFE5;
-  xlComments = $FFFFEFD0;
-  xlValues = $FFFFEFBD;
 
 procedure Register;
 begin
@@ -68,7 +74,7 @@ begin
   inherited;
 end;
 
-procedure TA7Rep.ExcelFind(const Value: string; var aCol, aRow: Integer; Where:Integer);
+procedure TA7Rep.ExcelFind(const Value: string; var aCol, aRow : Integer; Where:Integer);
 // Where: определяет где искать (xlFormulas, xlComments, xlValues)
 var
   R: OleVariant;
@@ -98,6 +104,19 @@ begin
         Result := TemplateSheet.Cells[y, x].Comment.Text;
         TemplateSheet.Cells[y, x].ClearComments;
      end;
+end;
+
+function TA7Rep.GetAndClearComment(X, Y: Integer): string;
+var
+  v : Variant;
+begin
+  Result := '';
+  if x<0 then Exit;
+  v := Variant(TemplateSheet.Cells[y, x].Value);
+  if ((varType(v) = varOleStr)) then begin
+    Result := TemplateSheet.Cells[y, x].Comment.Text;
+    TemplateSheet.Cells[y, x].ClearComments;
+  end;
 end;
 
 function TA7Rep.GetComment(VarName: string): string;
@@ -197,6 +216,33 @@ begin
   s := Value;
   Range := TemplateSheet.Rows[IntToStr(FirstBandLine) + ':' + IntToStr(LastBandLine)];
   Range.Replace(VarName, s);
+end;
+
+procedure TA7Rep.SetValue(X, Y: Integer; Value: Variant);
+begin
+  TemplateSheet.Cells[y, x].Value := Value;
+end;
+
+procedure TA7Rep.SetValueAsText(varName, Value: string);
+var y, x: integer;
+  v: Variant;
+begin
+  for y := FirstBandLine to LastBandLine do begin
+    for x := 2 to MaxBandColumns do begin
+      v := Variant(TemplateSheet.Cells[y, x].Value);
+      if ((varType(v) = varOleStr)) then
+        if v = VarName then begin
+          TemplateSheet.Cells[y, x].NumberFormat:= '@';
+          TemplateSheet.Cells[y, x].Value := Value;
+        end;
+    end;
+  end;
+end;
+
+procedure TA7Rep.SetValueAsText(X, Y: Integer; Value: string);
+begin
+  TemplateSheet.Cells[y, x].NumberFormat:= '@';
+  TemplateSheet.Cells[y, x].Value := Value;
 end;
 
 procedure TA7Rep.Show;
