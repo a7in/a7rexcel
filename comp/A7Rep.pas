@@ -29,9 +29,9 @@ type
   private
     Progress: TA7Progress;
 
-    CurrentLine: integer;
   protected
   public
+    CurrentLine: integer;
     Excel, TemplateSheet: Variant;
     FirstBandLine, LastBandLine: integer; // last paste band position
     MaxBandColumns : integer ; // максимальная ширина шаблона в столбцах
@@ -47,6 +47,7 @@ type
     function GetComment(VarName: string): string;
     function GetAndClearComment(VarName: string): string; overload;
     function GetAndClearComment(X,Y: Integer): string; overload;
+    function GetCellName(aCol, aRow : Integer): string;
     procedure ExcelFind(const Value: string; var aCol, aRow : Integer; Where:Integer);
     procedure Show;
     destructor Destroy; override;
@@ -72,6 +73,19 @@ destructor TA7Rep.Destroy;
 begin
 
   inherited;
+end;
+
+function TA7Rep.GetCellName(aCol, aRow : Integer): string;
+var
+  c1, c2 : Integer;
+begin
+  if aCol<27 then begin
+    Result := chr(64 + aCol)+IntToStr(aRow);
+  end else begin
+    c1 := (aCol-1) div 26;
+    c2 := aCol - c1*26;
+    Result := chr(64 + c1)+chr(64 + c2)+IntToStr(aRow);
+  end;
 end;
 
 procedure TA7Rep.ExcelFind(const Value: string; var aCol, aRow : Integer; Where:Integer);
