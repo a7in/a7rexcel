@@ -1,3 +1,7 @@
+//****************************************************************************//
+//****** Author - Kucher Alexander Vasilyevich <a7exander@gmail.com> *********//
+//************************* (С) 2015 *****************************************//
+//****************************************************************************//
 unit A7Rep;
 
 interface
@@ -6,13 +10,13 @@ uses
   SysUtils, Classes, Variants, ComObj, StdCtrls, Forms;
 
 const
-  // --------------- Константы Excel ----------------------------
+  // --------------- Excel constants ----------------------------
   xlFormulas = $FFFFEFE5;
   xlComments = $FFFFEFD0;
   xlValues = $FFFFEFBD;
-  
 
 type
+  // progress-form
   TA7Progress = class
   private
     F: TForm;
@@ -29,15 +33,16 @@ type
   private
     Progress: TA7Progress;
 
+    CurrentLine: integer;
   protected
   public
-    CurrentLine: integer;
     Excel, TemplateSheet: Variant;
     FirstBandLine, LastBandLine: integer; // last paste band position
-    MaxBandColumns : integer ; // максимальная ширина шаблона в столбцах
+    MaxBandColumns : integer ; // Max band width in excel-columns
     isVisible : boolean;
     procedure OpenTemplate(FileName: string); overload;
     procedure OpenTemplate(FileName: string; Visible : boolean); overload;
+    procedure OpenWorkSheet(Name: string);
     procedure PasteBand(BandName: string);
     procedure SetValue(VarName: string; Value: Variant); overload;
     procedure SetValue(X,Y: Integer; Value: Variant); overload;
@@ -60,7 +65,6 @@ implementation
 
 const
   MaxBandLines = 300; // max template lines count
-
 
 procedure Register;
 begin
@@ -89,19 +93,19 @@ begin
 end;
 
 procedure TA7Rep.ExcelFind(const Value: string; var aCol, aRow : Integer; Where:Integer);
-// Where: определяет где искать (xlFormulas, xlComments, xlValues)
+// Where: the search type (xlFormulas, xlComments, xlValues)
 var
-  R: OleVariant;
+  R: Variant;
 begin
    R := TemplateSheet.Rows[IntToStr(FirstBandLine) + ':' + IntToStr(LastBandLine)];
-   try
-     R:=R.Find(What:=Value,LookIn:=Where);
-     aCol:=R.Column;
-     aRow:=R.Row;
-   Except
+   R:=R.Find(What:=Value,LookIn:=Where);
+   if VarIsClear(R) then begin
      aCol := -1;
      aRow := -1;
-   End;
+   end else begin
+     aCol:=R.Column;
+     aRow:=R.Row;
+   end;
 end;
 
 function TA7Rep.GetAndClearComment(VarName: string): string;
@@ -157,15 +161,16 @@ procedure TA7Rep.OpenTemplate(FileName: string; Visible: boolean);
 begin
   Excel := CreateOleObject('Excel.Application');
   Excel.Workbooks.Open(FileName, True, True);
-  TemplateSheet := Excel.Workbooks[1].Sheets[1];
   Excel.DisplayAlerts := False; // for prevent error in SetValue procedure, where VarName not fount for replace
-  CurrentLine := 1;
 
   Excel.Visible := Visible;
   isVisible := Visible;
-  if isVisible=False then // Если Excel виден то не будем показывать окошко с прогрессом
-    Progress := TA7Progress.Create(Self);
+  if isVisible=False then
+    Progress := TA7Progress.Create(Self); // show progress-window
   Application.ProcessMessages;
+
+  TemplateSheet := Excel.Workbooks[1].Sheets[1];
+  CurrentLine := 1;
   MaxBandColumns := TemplateSheet.UsedRange.Columns.Count;
 end;
 
@@ -192,7 +197,6 @@ begin
   end;
 
   if LastBandLine>0 then begin // if BandName found
-
     Range := TemplateSheet.Rows[IntToStr(FirstBandLine) + ':' + IntToStr(LastBandLine)];
     Range.Copy;
     Range := TemplateSheet.Rows[IntToStr(CurrentLine) + ':' + IntToStr(CurrentLine)];
@@ -208,12 +212,11 @@ begin
     LastBandLine := CurrentLine - 1;
     if isVisible=false then
       Progress.Line(CurrentLine);
-
   end;
 end;
 
 procedure TA7Rep.SetComment(VarName: string; Value: Variant);
-// VarName - метка в ячейке, в которую нужно добавить комментарий
+// VarName - tag in cell, for setting comment
 var
   x, y : Integer;
 begin
@@ -227,14 +230,23 @@ procedure TA7Rep.SetValue(VarName: string; Value: Variant);
 var Range: Variant;
   s: string;
 begin
-  s := Value;
+  if Value=null then
+    s := ''
+  else
+    s := Value;
   Range := TemplateSheet.Rows[IntToStr(FirstBandLine) + ':' + IntToStr(LastBandLine)];
   Range.Replace(VarName, s);
 end;
 
 procedure TA7Rep.SetValue(X, Y: Integer; Value: Variant);
+var
+  s: string;
 begin
-  TemplateSheet.Cells[y, x].Value := Value;
+  if Value=null then
+    s := ''
+  else
+    s := Value;
+  TemplateSheet.Cells[y, x].Value := s;
 end;
 
 procedure TA7Rep.SetValueAsText(varName, Value: string);
@@ -314,6 +326,24 @@ procedure TA7Progress.Line(p: integer);
 begin
   L2.Caption := 'Line: ' + IntToStr(p);
   Application.ProcessMessages;
+end;
+
+// for using multi-sheet reports
+// if Name='' then open first worksheet
+procedure TA7Rep.OpenWorkSheet(Name: string);
+var
+  Range: Variant;
+begin
+  // delete band templates
+  Range := TemplateSheet.Rows[IntToStr(CurrentLine) + ':' + IntToStr(CurrentLine + MaxBandLines)];
+  Range.Delete;
+
+  if Name='' then
+    TemplateSheet := Excel.Workbooks[1].Sheets[1]
+  else
+    TemplateSheet := Excel.Workbooks[1].Sheets[Name];
+  CurrentLine := 1;
+  MaxBandColumns := TemplateSheet.UsedRange.Columns.Count;
 end;
 
 end.
