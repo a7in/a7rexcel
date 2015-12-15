@@ -33,9 +33,9 @@ type
   private
     Progress: TA7Progress;
 
-    CurrentLine: integer;
   protected
   public
+    CurrentLine: integer;
     Excel, TemplateSheet: Variant;
     FirstBandLine, LastBandLine: integer; // last paste band position
     MaxBandColumns : integer ; // Max band width in excel-columns
@@ -46,6 +46,7 @@ type
     procedure PasteBand(BandName: string);
     procedure SetValue(VarName: string; Value: Variant); overload;
     procedure SetValue(X,Y: Integer; Value: Variant); overload;
+    procedure SetSumFormula(VarName: string; FirstLine, LastLine: Integer);
     procedure SetValueAsText(varName: string; Value: string); overload;
     procedure SetValueAsText(X,Y: Integer; Value: string); overload;    
     procedure SetComment(VarName: string; Value: Variant);
@@ -228,25 +229,20 @@ end;
 
 procedure TA7Rep.SetValue(VarName: string; Value: Variant);
 var Range: Variant;
-  s: string;
 begin
-  if Value=null then
-    s := ''
-  else
-    s := Value;
   Range := TemplateSheet.Rows[IntToStr(FirstBandLine) + ':' + IntToStr(LastBandLine)];
-  Range.Replace(VarName, s);
+  if Value=null then
+    Range.Replace(VarName, '')
+  else
+    Range.Replace(VarName, VarToStr(Value));
 end;
 
 procedure TA7Rep.SetValue(X, Y: Integer; Value: Variant);
-var
-  s: string;
 begin
   if Value=null then
-    s := ''
+    TemplateSheet.Cells[y, x].Value := ''
   else
-    s := Value;
-  TemplateSheet.Cells[y, x].Value := s;
+    TemplateSheet.Cells[y, x].Value := Value;
 end;
 
 procedure TA7Rep.SetValueAsText(varName, Value: string);
@@ -344,6 +340,19 @@ begin
     TemplateSheet := Excel.Workbooks[1].Sheets[Name];
   CurrentLine := 1;
   MaxBandColumns := TemplateSheet.UsedRange.Columns.Count;
+end;
+
+procedure TA7Rep.SetSumFormula(VarName: string; FirstLine, LastLine: Integer);
+var
+  x, y : Integer;
+begin
+  ExcelFind(VarName, x, y, xlValues);
+  if x>0 then begin
+    if LastLine<>CurrentLine then
+      TemplateSheet.Cells[y, x].Value := '=SUM('+GetCellName(x,FirstLine)+':'+GetCellName(x,LastLine)+')'
+    else
+      TemplateSheet.Cells[y, x].Value := '';
+  end
 end;
 
 end.
