@@ -1,6 +1,6 @@
 //****************************************************************************//
 //****** Author - Kucher Alexander Vasilyevich <a7exander@gmail.com> *********//
-//************************* (Ñ) 2015 *****************************************//
+//************************* (Ñ) 2016 *****************************************//
 //****************************************************************************//
 unit A7Rep;
 
@@ -22,6 +22,7 @@ type
     F: TForm;
     L1: TLabel;
     L2: TLabel;
+    L3: TLabel;
   protected
   public
     procedure Line(p: integer);
@@ -37,16 +38,17 @@ type
   public
     CurrentLine: integer;
     Excel, TemplateSheet: Variant;
-    FirstBandLine, LastBandLine: integer; // last paste band position
     MaxBandColumns : integer ; // Max band width in excel-columns
     isVisible : boolean;
+    FirstBandLine, LastBandLine : Integer;
     procedure OpenTemplate(FileName: string); overload;
     procedure OpenTemplate(FileName: string; Visible : boolean); overload;
     procedure OpenWorkSheet(Name: string);
     procedure PasteBand(BandName: string);
     procedure SetValue(VarName: string; Value: Variant); overload;
     procedure SetValue(X,Y: Integer; Value: Variant); overload;
-    procedure SetSumFormula(VarName: string; FirstLine, LastLine: Integer);
+    procedure SetSumFormula(VarName: string; FirstLine, LastLine: Integer); overload;
+    procedure SetSumFormula(VarName: string; BandName: string); overload;
     procedure SetValueAsText(varName: string; Value: string); overload;
     procedure SetValueAsText(X,Y: Integer; Value: string); overload;    
     procedure SetComment(VarName: string; Value: Variant);
@@ -173,6 +175,8 @@ begin
   TemplateSheet := Excel.Workbooks[1].Sheets[1];
   CurrentLine := 1;
   MaxBandColumns := TemplateSheet.UsedRange.Columns.Count;
+
+  if Assigned(Progress) then Progress.L3.Caption := 'Sheet: 1';
 end;
 
 procedure TA7Rep.PasteBand(BandName: string);
@@ -203,10 +207,10 @@ begin
     Range := TemplateSheet.Rows[IntToStr(CurrentLine) + ':' + IntToStr(CurrentLine)];
     Range.Insert;
 
-    // delete band name from result lines
+{    // delete band name from result lines
     for i := CurrentLine to CurrentLine + (LastBandLine - FirstBandLine) do begin
       TemplateSheet.Cells[i, 1].Value := '';
-    end;
+    end;}
     CurrentLine := CurrentLine + (LastBandLine - FirstBandLine) + 1;
     // new band position in report
     FirstBandLine := CurrentLine - (LastBandLine - FirstBandLine) - 1;
@@ -290,7 +294,7 @@ constructor TA7Progress.Create(AOwner: TComponent);
 begin
   F := TForm.Create(nil);
   F.Width := 150;
-  F.Height := 80;
+  F.Height := 90;
   F.Position := poScreenCenter;
   F.BorderStyle := bsNone;
   F.FormStyle := fsStayOnTop;
@@ -302,12 +306,23 @@ begin
   L1.Alignment := taCenter;
   L1.Top := 20;
   L1.Caption := 'Building report';
+
+  // Line
   L2 := TLabel.Create(F);
   L2.Parent := F;
   L2.Left := 30;
   L2.Width := 100;
   L2.Alignment := taCenter;
   L2.Top := 40;
+
+  // Sheet
+  L3 := TLabel.Create(F);
+  L3.Parent := F;
+  L3.Left := 30;
+  L3.Width := 100;
+  L3.Alignment := taCenter;
+  L3.Top := 60;
+
   F.Show;
 end;
 
@@ -340,6 +355,8 @@ begin
     TemplateSheet := Excel.Workbooks[1].Sheets[Name];
   CurrentLine := 1;
   MaxBandColumns := TemplateSheet.UsedRange.Columns.Count;
+
+  if Assigned(Progress) then Progress.L3.Caption := 'Sheet: '+Name;
 end;
 
 procedure TA7Rep.SetSumFormula(VarName: string; FirstLine, LastLine: Integer);
@@ -352,7 +369,30 @@ begin
       TemplateSheet.Cells[y, x].Value := '=SUM('+GetCellName(x,FirstLine)+':'+GetCellName(x,LastLine)+')'
     else
       TemplateSheet.Cells[y, x].Value := '';
-  end
+  end;
+end;
+
+procedure TA7Rep.SetSumFormula(VarName, BandName: string);
+var
+  x, y, i : Integer;
+  c, s : string;
+begin
+  ExcelFind(VarName, x, y, xlValues);
+  s := '';
+  if x>0 then begin
+    for i := 1 to CurrentLine-1 do begin
+      c := TemplateSheet.Cells[i, 1].Value;
+      if c=BandName then begin
+        if s<>'' then s := s + '+';
+        s := s + GetCellName(x,i);
+      end;
+    end;
+    if s<>'' then begin
+      TemplateSheet.Cells[y, x].Value := '='+s+'';
+    end else begin
+      TemplateSheet.Cells[y, x].Value := '';
+    end;
+  end;
 end;
 
 end.

@@ -64,6 +64,12 @@ begin
     Kurs := 8;
   Rep.SetValue('#SUMMA_VAL#', sum/Kurs);
 
+  // Выводим второй лист
+  Rep.OpenWorkSheet('Sheet2');
+  Rep.PasteBand('Title');
+  Rep.SetValue('#N#',2);
+  Rep.SetValue('#F#','=C2*2');
+
   Rep.Show;
 end;
 
