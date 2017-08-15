@@ -1,7 +1,7 @@
-//****************************************************************************//
-//****** Author - Kucher Alexander Vasilyevich <a7exander@gmail.com> *********//
-//************************* (Ñ) 2016 *****************************************//
-//****************************************************************************//
+//****************************************************************//
+//****** Author - Kucher Alexander <a7exander@gmail.com> *********//
+//************************* (Ñ) 2017 *****************************//
+//****************************************************************//
 unit A7Rep;
 
 interface
@@ -47,6 +47,7 @@ type
     procedure PasteBand(BandName: string);
     procedure SetValue(VarName: string; Value: Variant); overload;
     procedure SetValue(X,Y: Integer; Value: Variant); overload;
+    procedure SetValueF(VarName: string; Value: Variant);
     procedure SetSumFormula(VarName: string; FirstLine, LastLine: Integer); overload;
     procedure SetSumFormula(VarName: string; BandName: string); overload;
     procedure SetValueAsText(varName: string; Value: string); overload;
@@ -247,6 +248,29 @@ begin
     TemplateSheet.Cells[y, x].Value := ''
   else
     TemplateSheet.Cells[y, x].Value := Value;
+end;
+
+// Edited by cyrax1000, 2017-08-11
+// Set value to cell with formatted string
+procedure TA7Rep.SetValueF(VarName: string; Value: Variant);
+var
+  x, y, p: Integer;
+begin
+  x:= 0;
+  while x >= 0 do
+  begin
+    ExcelFind(VarName, x, y, xlValues);
+    if x > 0 then
+    begin
+      TemplateSheet.Cells[y, x].Select;
+      p:= Pos(VarName, TemplateSheet.Cells[y, x]);
+      if p > 0 then
+        if Value = Null then
+          Excel.ActiveCell.Characters[Start:= p, Length:= Length('')].Insert(Value)
+        else
+          Excel.ActiveCell.Characters[Start:= p, Length:= Length(VarName)].Insert(Value);
+    end;
+  end;
 end;
 
 procedure TA7Rep.SetValueAsText(varName, Value: string);
