@@ -37,7 +37,7 @@ begin
   Rep.PasteBand('Title');
   Rep.SetValue('#VENDOR#','Vendor name');
   Rep.SetValue('#BUY#','Private person');
-  Rep.SetValue('#D#','01.03.2012');
+  Rep.SetValueF('#D#','01.03.2012');
   Rep.SetValue('#NOTE#','-');
   Rep.SetComment('#ID#','Здесь мы комментируем если нужно'); // Обязательно делаем комментарий ПЕРЕД тем как вставим значение в ячейку, иначе значение затрет метку и SetComment не найдет куда писать коммент
   Rep.SetValue('#ID#','54321');
