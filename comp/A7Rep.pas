@@ -1,6 +1,6 @@
 //****************************************************************//
 //****** Author - Kucher Alexander <a7exander@gmail.com> *********//
-//************************* (Ñ) 2017 *****************************//
+//************************* (Ñ) 2018 *****************************//
 //****************************************************************//
 unit A7Rep;
 
@@ -14,6 +14,9 @@ const
   xlFormulas = $FFFFEFE5;
   xlComments = $FFFFEFD0;
   xlValues = $FFFFEFBD;
+  xlNone = -4142;
+  xlSolid = 1;
+  xlAutomatic = -4105;
 
 type
   // progress-form
@@ -426,10 +429,10 @@ var
 begin
   ExcelFind(VarName, x, y, xlValues);
   if Color=null then begin
-    TemplateSheet.Cells[y, x].Interior.Pattern := -4142; //xlNone;
+    TemplateSheet.Cells[y, x].Interior.Pattern := xlNone;
   end else begin
-    TemplateSheet.Cells[y, x].Interior.Pattern := 1; //xlSolid;
-    TemplateSheet.Cells[y, x].Interior.PatternColorIndex := -4105; // xlAutomatic;
+    TemplateSheet.Cells[y, x].Interior.Pattern := xlSolid;
+    TemplateSheet.Cells[y, x].Interior.PatternColorIndex := xlAutomatic;
     TemplateSheet.Cells[y, x].Interior.Color := Color;
   end;  
 end;
