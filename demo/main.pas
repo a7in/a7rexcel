@@ -52,6 +52,7 @@ begin
     Rep.SetValue('#SUMMA#', s);
   end;
   Rep.PasteBand('Foot');
+  Rep.SetColor('#SUMMA#', 255); // red color!
   Rep.SetValue('#SUMMA#', sum);
   Rep.SetValue('#CURRENT_DATE#', DateToStr(now));
 

@@ -53,6 +53,7 @@ type
     procedure SetValueAsText(varName: string; Value: string); overload;
     procedure SetValueAsText(X,Y: Integer; Value: string); overload;    
     procedure SetComment(VarName: string; Value: Variant);
+    procedure SetColor(VarName: string; Color: Variant);
     function GetComment(VarName: string): string;
     function GetAndClearComment(VarName: string): string; overload;
     function GetAndClearComment(X,Y: Integer): string; overload;
@@ -417,6 +418,20 @@ begin
       TemplateSheet.Cells[y, x].Value := '';
     end;
   end;
+end;
+
+procedure TA7Rep.SetColor(VarName: string; Color: Variant);
+var
+  x, y : Integer;
+begin
+  ExcelFind(VarName, x, y, xlValues);
+  if Color=null then begin
+    TemplateSheet.Cells[y, x].Interior.Pattern := -4142; //xlNone;
+  end else begin
+    TemplateSheet.Cells[y, x].Interior.Pattern := 1; //xlSolid;
+    TemplateSheet.Cells[y, x].Interior.PatternColorIndex := -4105; // xlAutomatic;
+    TemplateSheet.Cells[y, x].Interior.Color := Color;
+  end;  
 end;
 
 end.
